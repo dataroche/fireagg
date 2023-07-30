@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "fireagg"
+version = "0.1.0"
+description = ""
+authors = ["Will S1200 <wil19558@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+ccxt = "^4.0.39"
+plotly = "^5.15.0"
+pandas = "^2.0.3"
+pyarrow = "^12.0.1"
+nbformat = "^5.9.1"
+pypeln = "^0.4.9"
+aiostream = "^0.4.5"
+typer = {extras = ["all"], version = "^0.9.0"}
+pydapper = {extras = ["aiopg"], version = "^0.8.0"}
+pydantic = "^2.1.1"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.25.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
