@@ -38,6 +38,7 @@ CREATE TABLE realtime.symbol_prices (
     timestamp TIMESTAMP NOT NULL,
     price NUMERIC(32, 18),
     update_timestamp TIMESTAMP NOT NULL,
+    fetch_timestamp TIMESTAMP NOT NULL,
     PRIMARY KEY (connector, symbol_id),
     CONSTRAINT fk_symbol
         FOREIGN KEY(symbol_id) 
@@ -46,12 +47,14 @@ CREATE TABLE realtime.symbol_prices (
 
 
 CREATE TABLE history.symbol_prices_history (
+    id SERIAL NOT NULL,
     connector TEXT NOT NULL,
     symbol_id INT NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     price NUMERIC(32, 18),
     update_timestamp TIMESTAMP NOT NULL,
-    PRIMARY KEY (connector, symbol_id),
+    fetch_timestamp TIMESTAMP NOT NULL,
+    PRIMARY KEY (id),
     CONSTRAINT fk_symbol
         FOREIGN KEY(symbol_id) 
         REFERENCES realtime.symbols(id)

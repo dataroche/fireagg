@@ -17,10 +17,31 @@ class ConnectorSymbolInput(SymbolInput):
     connector: str
 
 
+class ConnectorSymbolMapping(SymbolInput):
+    symbol_id: int
+    connector: str
+    connector_symbol: str
+
+
 async def get_all(commands: CommandsAsync):
     return await commands.query_async(
         "SELECT id, symbol, base_asset, quote_asset FROM realtime.symbols",
         model=Symbol,
+    )
+
+
+async def get_connector_symbol_mapping(
+    commands: CommandsAsync, connector: str, symbol: str
+):
+    return await commands.query_single_async(
+        """
+        SELECT symbol_id, connector, connector_symbol, symbol, base_asset, quote_asset
+        FROM realtime.symbols_map
+        JOIN realtime.symbols ON symbol_id = id
+        WHERE connector = ?connector? AND symbol = ?symbol?
+        """,
+        model=ConnectorSymbolMapping,
+        param={"connector": connector, "symbol": symbol},
     )
 
 
@@ -60,3 +81,17 @@ async def upsert_many(commands: CommandsAsync, symbols: list[ConnectorSymbolInpu
         """,
         param=symbols_map,
     )
+
+
+async def get_symbol_connectors(commands: CommandsAsync, symbol: str):
+    connectors = await commands.query_async(
+        """
+        SELECT connector
+        FROM realtime.symbols_map 
+        JOIN realtime.symbols ON id = symbol_id
+        WHERE symbol = ?symbol?
+        """,
+        param={"symbol": symbol},
+    )
+
+    return [data["connector"] for data in connectors]

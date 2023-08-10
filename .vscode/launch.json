@@ -5,10 +5,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "FireAgg CLI",
+            "name": "FireAgg Seed Connectors",
             "type": "python",
             "request": "launch",
             "module": "fireagg",
+            "args": [
+                "seed-markets",
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "FireAgg Watch Price",
+            "type": "python",
+            "request": "launch",
+            "module": "fireagg",
+            "args": [
+                "watch-symbol",
+                "BTC/USDT",
+                "--connector",
+                "binance"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "FireAgg Combine Connectors",
+            "type": "python",
+            "request": "launch",
+            "module": "fireagg",
+            "args": [
+                "combine-connectors",
+                "BTC/USDT",
+                "AAVE/USDT",
+                "COMP/USDT",
+                "CRV/USDT"
+            ],
             "justMyCode": true
         }
     ]
