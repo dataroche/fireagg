@@ -1,11 +1,14 @@
+import asyncio
+from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import AsyncIterator
-import ccxt.async_support
-from ccxt.async_support.base.exchange import Exchange
-import ccxt.pro
-from ccxt.base.errors import AuthenticationError, NotSupported
 
-from fireagg.connectors.base import Connector, LastPrice
+import ccxt.async_support
+import ccxt.pro
+from ccxt.async_support.base.exchange import Exchange
+from ccxt.base.errors import AuthenticationError, NotSupported, RequestTimeout
+
+from fireagg.connectors.base import Connector, LastPrice, MidPrice
 from fireagg.database import symbols
 
 
@@ -17,6 +20,9 @@ def list_ccxt_connector_names():
         "okcoin",
     }
     return [exch for exch in ccxt.exchanges if exch not in exclude]
+
+
+LOWEST_ORDER_BOOK_BY_EXCHANGE = {"binance": 5, "binanceus": 5, "kucoin": 20}
 
 
 class CCXTConnector(Connector):
@@ -47,30 +53,60 @@ class CCXTConnector(Connector):
     async def do_watch_market_last_price(
         self, connector_symbol: str
     ) -> AsyncIterator[LastPrice]:
-        try:
-            exchange: Exchange = getattr(ccxt.pro, self.name)()
-        except AttributeError:
-            raise RuntimeError(
-                f"Unable to watch connector {self.name} because of it's not supported by CCXT Pro (no pro exchange named like that)."
-            )
-
-        try:
+        async with self._exchange() as exchange:
             while self.running:
                 ticker = await exchange.watch_ticker(connector_symbol)
                 yield LastPrice(
                     timestamp_ms=ticker["timestamp"], price=Decimal(ticker["last"])
                 )
+
+    async def do_watch_mid_price(self, connector_symbol: str):
+        limit = LOWEST_ORDER_BOOK_BY_EXCHANGE.get(self.name, 25)
+        retries = 3
+        async with self._exchange() as exchange:
+            while self.running:
+                try:
+                    book = await exchange.watch_order_book(
+                        connector_symbol, limit=limit
+                    )
+                    best_bid = Decimal(book["bids"][0][0])
+                    best_ask = Decimal(book["asks"][0][0])
+
+                    yield MidPrice(
+                        timestamp_ms=book["timestamp"],
+                        best_bid=best_bid,
+                        best_ask=best_ask,
+                    )
+                except (asyncio.TimeoutError, RequestTimeout):
+                    if retries > 0:
+                        self.logger.info(f"Timeout with {self.name}: Retrying...")
+                        retries = retries - 1
+                        await asyncio.sleep(5)
+                    else:
+                        raise
+
+    @asynccontextmanager
+    async def _exchange(self):
+        try:
+            exchange: Exchange = getattr(ccxt.pro, self.name)()
+        except AttributeError:
+            raise ValueError(
+                f"Unable to watch connector {self.name} because of it's not supported by CCXT Pro (no pro exchange named like that)."
+            )
+
+        try:
+            yield exchange
         except AuthenticationError:
-            raise RuntimeError(
+            raise ValueError(
                 f"Unable to watch connector {self.name} because of authentication error."
             )
         except NotSupported:
-            raise RuntimeError(
+            raise ValueError(
                 f"Unable to watch connector {self.name} because it's not supported by CCXT."
             )
         except Exception as e:
             raise RuntimeError(
-                f"Runtime error while watching {self.name} {connector_symbol}"
+                f"Runtime error while watching {self.name}: {str(e)}"
             ) from e
         finally:
             await exchange.close()

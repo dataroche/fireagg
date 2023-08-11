@@ -1,3 +1,4 @@
+from typing import Optional
 import pydantic
 from pydapper.commands import CommandsAsync
 
@@ -21,6 +22,7 @@ class ConnectorSymbolMapping(SymbolInput):
     symbol_id: int
     connector: str
     connector_symbol: str
+    is_error: Optional[bool]
 
 
 async def get_all(commands: CommandsAsync):
@@ -35,7 +37,14 @@ async def get_connector_symbol_mapping(
 ):
     return await commands.query_single_async(
         """
-        SELECT symbol_id, connector, connector_symbol, symbol, base_asset, quote_asset
+        SELECT
+            symbol_id,
+            connector,
+            connector_symbol,
+            symbol,
+            base_asset,
+            quote_asset,
+            is_error
         FROM realtime.symbols_map
         JOIN realtime.symbols ON symbol_id = id
         WHERE connector = ?connector? AND symbol = ?symbol?
@@ -87,11 +96,27 @@ async def get_symbol_connectors(commands: CommandsAsync, symbol: str):
     connectors = await commands.query_async(
         """
         SELECT connector
-        FROM realtime.symbols_map 
+        FROM realtime.symbols_map
         JOIN realtime.symbols ON id = symbol_id
-        WHERE symbol = ?symbol?
+        WHERE symbol = ?symbol? AND (is_error IS NULL or not is_error)
         """,
         param={"symbol": symbol},
     )
 
     return [data["connector"] for data in connectors]
+
+
+async def mark_connector_symbol_mapping(
+    commands: CommandsAsync,
+    connector: str,
+    symbol_id: int,
+    is_error: Optional[bool] = None,
+):
+    await commands.execute_async(
+        """
+        UPDATE realtime.symbols_map
+        SET is_error=?is_error?
+        WHERE connector = ?connector? AND symbol_id = ?symbol_id?
+        """,
+        param={"connector": connector, "symbol_id": symbol_id, "is_error": is_error},
+    )

@@ -15,7 +15,7 @@ def seed_markets(connector: Optional[str] = None):
 
 @cli.command()
 def watch_symbol(symbol: str, connector: str = "kraken"):
-    asyncio.run(data_streams.watch_symbol(connector, symbol=symbol))
+    asyncio.run(data_streams.watch_order_book(connector, symbol=symbol))
 
 
 @cli.command()

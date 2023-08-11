@@ -1,5 +1,5 @@
 import datetime
-import pytz
+from typing import Optional
 from decimal import Decimal
 
 import pydantic
@@ -11,24 +11,40 @@ class SymbolPriceInput(pydantic.BaseModel):
     symbol_id: int
     timestamp: datetime.datetime
     fetch_timestamp: datetime.datetime
-    price: Decimal
+
+    last_price: Optional[Decimal] = None
+    best_bid: Optional[Decimal] = None
+    mid_price: Optional[Decimal] = None
+    best_ask: Optional[Decimal] = None
 
 
-async def update_price(commands: CommandsAsync, symbol_price_input: SymbolPriceInput):
-    update_timestamp: datetime.datetime = await commands.execute_scalar_async(
+async def update_prices(
+    commands: CommandsAsync, symbol_price_inputs: list[SymbolPriceInput]
+):
+    await commands.execute_async(
         """
-        INSERT INTO history.symbol_prices_history (connector, symbol_id, timestamp, price, update_timestamp, fetch_timestamp)
-        VALUES (?connector?, ?symbol_id?, ?timestamp?, ?price?, NOW(), ?fetch_timestamp?);
-
-        INSERT INTO realtime.symbol_prices (connector, symbol_id, timestamp, price, update_timestamp, fetch_timestamp)
-        VALUES (?connector?, ?symbol_id?, ?timestamp?, ?price?, NOW(), ?fetch_timestamp?)
-        ON CONFLICT (connector, symbol_id)
-        DO UPDATE SET
-            timestamp=?timestamp?,
-            price=?price?,
-            update_timestamp=NOW()
-        RETURNING update_timestamp;
+        INSERT INTO history.symbol_prices_history (
+            connector,
+            symbol_id,
+            timestamp,
+            last_price,
+            best_bid,
+            mid_price,
+            best_ask,
+            update_timestamp,
+            fetch_timestamp
+        )
+        VALUES (
+            ?connector?,
+            ?symbol_id?,
+            ?timestamp?,
+            ?last_price?,
+            ?best_bid?,
+            ?mid_price?,
+            ?best_ask?,
+            NOW(),
+            ?fetch_timestamp?
+        );
         """,
-        param=symbol_price_input.model_dump(),
+        param=[symbol.model_dump() for symbol in symbol_price_inputs],
     )
-    return pytz.UTC.localize(update_timestamp)

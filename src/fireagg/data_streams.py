@@ -1,14 +1,14 @@
 import asyncio
-import math
 from decimal import Decimal
 from typing import Iterable, Optional
 
-import pypeln
 from aiostream import stream
 
 from fireagg.database.symbol_prices import SymbolPriceInput
 
 from fireagg.connectors import create_connector, list_connectors, list_symbol_connectors
+
+from fireagg.processing.core import ProcessingCore
 
 
 async def seed_connectors(connectors: Optional[list[str]] = None):
@@ -22,29 +22,24 @@ async def seed_connectors(connectors: Optional[list[str]] = None):
     )
 
 
-async def watch_symbol(connector_name: str, symbol: str):
-    connector = create_connector(connector_name)
-    await connector.watch_market_last_price(symbol)
-
-
 async def combine_connectors(symbols: Iterable[str]):
-    data_streams = []
+    core = ProcessingCore()
     for symbol in symbols:
         connectors = await list_symbol_connectors(symbol)
 
         for connector_name in connectors:
             connector = create_connector(connector_name)
-            data_streams.append(connector.iter_watch_market_last_price(symbol))
+            await core.watch_order_book(connector, symbol)
 
-    combine = stream.merge(*data_streams)
-    # combinator = PriceCombinator()
-    async with combine.stream() as streamer:
-        stage = pypeln.task.each(noop, streamer)
-        await stage
+    await core.run()
 
 
-def noop(price: SymbolPriceInput):
-    pass
+async def watch_order_book(connector_name: str, symbol: str):
+    core = ProcessingCore()
+    connector = create_connector(connector_name)
+    await core.watch_order_book(connector, symbol)
+
+    await core.run()
 
 
 class PriceCombinator:

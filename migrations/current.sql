@@ -26,6 +26,7 @@ CREATE TABLE realtime.symbols_map (
     symbol_id SERIAL NOT NULL,
     connector TEXT NOT NULL,
     connector_symbol TEXT NOT NULL,
+    is_error BOOL,
     PRIMARY KEY (symbol_id, connector),
     CONSTRAINT fk_symbol
         FOREIGN KEY(symbol_id) 
@@ -51,7 +52,10 @@ CREATE TABLE history.symbol_prices_history (
     connector TEXT NOT NULL,
     symbol_id INT NOT NULL,
     timestamp TIMESTAMP NOT NULL,
-    price NUMERIC(32, 18),
+    last_price NUMERIC(32, 18),
+    best_bid NUMERIC(32, 18),
+    mid_price NUMERIC(32, 18),
+    best_ask NUMERIC(32, 18),
     update_timestamp TIMESTAMP NOT NULL,
     fetch_timestamp TIMESTAMP NOT NULL,
     PRIMARY KEY (id),

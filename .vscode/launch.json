@@ -37,9 +37,28 @@
                 "BTC/USDT",
                 "AAVE/USDT",
                 "COMP/USDT",
-                "CRV/USDT"
+                "CRV/USDT",
+                "RPL/USDT",
+                "BTC/USD",
+                "AAVE/USD",
+                "COMP/USD",
+                "CRV/USD",
+                "RPL/USD",
             ],
-            "justMyCode": true
+            "justMyCode": false
+        },
+        {
+            "name": "FireAgg Watch Symbol",
+            "type": "python",
+            "request": "launch",
+            "module": "fireagg",
+            "args": [
+                "watch-symbol",
+                "RPL/USDT",
+                "--connector",
+                "binance"
+            ],
+            "justMyCode": false
         }
     ]
 }
