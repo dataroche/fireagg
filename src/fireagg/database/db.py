@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
 import os
+from typing import Optional
 import pydapper
 import pydapper.exceptions
 
 import aiopg
-import psycopg2
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 POSTGRES_DATABASE_URL = os.environ.get("POSTGRES_DATABASE_URL")
@@ -12,17 +12,37 @@ POSTGRES_DATABASE_URL = os.environ.get("POSTGRES_DATABASE_URL")
 NoResultException = pydapper.exceptions.NoResultException
 
 
+async def create_pool(maxsize=10):
+    return await aiopg.create_pool(DATABASE_URL, maxsize=maxsize)
+
+
+DEFAULT_POOL: Optional[aiopg.Pool] = None
+
+
 @asynccontextmanager
-async def create_pool():
-    raise RuntimeError("TODO(will): Pool not working!")
-    async with aiopg.create_pool(DATABASE_URL) as pool:
-        yield pool
+async def default_pool():
+    try:
+        yield
+    finally:
+        if DEFAULT_POOL:
+            DEFAULT_POOL.close()
+            await DEFAULT_POOL.wait_closed()
 
 
-def connect_async():
-    # postgresql+aiopg://
+@asynccontextmanager
+async def connect_async(pool: Optional[aiopg.Pool] = None):
+    global DEFAULT_POOL
     assert DATABASE_URL
-    return pydapper.connect_async(DATABASE_URL)
+
+    if not DEFAULT_POOL:
+        DEFAULT_POOL = await create_pool()
+
+    if not pool:
+        pool = DEFAULT_POOL
+
+    async with pool.acquire() as conn:
+        async with pydapper.using_async(conn) as commands:
+            yield commands
 
 
 def connect():
