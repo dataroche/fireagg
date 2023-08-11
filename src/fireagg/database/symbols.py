@@ -22,12 +22,12 @@ class ConnectorSymbolMapping(SymbolInput):
     symbol_id: int
     connector: str
     connector_symbol: str
-    is_error: Optional[bool]
+    is_unavailable: Optional[bool]
 
 
 async def get_all(commands: CommandsAsync):
     return await commands.query_async(
-        "SELECT id, symbol, base_asset, quote_asset FROM realtime.symbols",
+        "SELECT id, symbol, base_asset, quote_asset FROM symbols",
         model=Symbol,
     )
 
@@ -44,9 +44,9 @@ async def get_connector_symbol_mapping(
             symbol,
             base_asset,
             quote_asset,
-            is_error
-        FROM realtime.symbols_map
-        JOIN realtime.symbols ON symbol_id = id
+            is_unavailable
+        FROM symbols_map
+        JOIN symbols ON symbol_id = id
         WHERE connector = ?connector? AND symbol = ?symbol?
         """,
         model=ConnectorSymbolMapping,
@@ -60,7 +60,7 @@ async def upsert_many(commands: CommandsAsync, symbols: list[ConnectorSymbolInpu
 
     await commands.execute_async(
         """
-        INSERT INTO realtime.symbols (symbol, base_asset, quote_asset)
+        INSERT INTO symbols (symbol, base_asset, quote_asset)
         VALUES (?symbol?, ?base_asset?, ?quote_asset?)
         ON CONFLICT (symbol) DO NOTHING
         """,
@@ -84,7 +84,7 @@ async def upsert_many(commands: CommandsAsync, symbols: list[ConnectorSymbolInpu
 
     await commands.execute_async(
         """
-        INSERT INTO realtime.symbols_map (symbol_id, connector, connector_symbol)
+        INSERT INTO symbols_map (symbol_id, connector, connector_symbol)
         VALUES (?symbol_id?, ?connector?, ?connector_symbol?)
         ON CONFLICT (symbol_id, connector) DO UPDATE SET connector_symbol=?connector_symbol?
         """,
@@ -96,9 +96,9 @@ async def get_symbol_connectors(commands: CommandsAsync, symbol: str):
     connectors = await commands.query_async(
         """
         SELECT connector
-        FROM realtime.symbols_map
-        JOIN realtime.symbols ON id = symbol_id
-        WHERE symbol = ?symbol? AND (is_error IS NULL or not is_error)
+        FROM symbols_map
+        JOIN symbols ON id = symbol_id
+        WHERE symbol = ?symbol? AND (is_unavailable IS NULL or not is_unavailable)
         """,
         param={"symbol": symbol},
     )
@@ -110,13 +110,17 @@ async def mark_connector_symbol_mapping(
     commands: CommandsAsync,
     connector: str,
     symbol_id: int,
-    is_error: Optional[bool] = None,
+    is_unavailable: Optional[bool] = None,
 ):
     await commands.execute_async(
         """
-        UPDATE realtime.symbols_map
-        SET is_error=?is_error?
+        UPDATE symbols_map
+        SET is_unavailable=?is_unavailable?
         WHERE connector = ?connector? AND symbol_id = ?symbol_id?
         """,
-        param={"connector": connector, "symbol_id": symbol_id, "is_error": is_error},
+        param={
+            "connector": connector,
+            "symbol_id": symbol_id,
+            "is_unavailable": is_unavailable,
+        },
     )

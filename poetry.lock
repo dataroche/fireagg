@@ -102,6 +102,14 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "asyncio-multisubscriber-queue"
+version = "0.4.1"
+description = "Allow a single producer to provide the same payload to multiple consumers simultaneously"
+category = "main"
+optional = false
+python-versions = ">=3.10,<4"
+
+[[package]]
 name = "attrs"
 version = "23.1.0"
 description = "Classes Without Boilerplate"
@@ -1052,7 +1060,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "f410e26c7c17ef0156c9cd96feb58d42271c76ae96614583cf7d1a0def539642"
+content-hash = "4de4ac1bbeb39e2f563b303f0c6a5056b1600a840f45fc722a5beed638b78b6c"
 
 [metadata.files]
 aiodns = [
@@ -1175,6 +1183,10 @@ asttokens = [
 async-timeout = [
     {file = "async-timeout-4.0.2.tar.gz", hash = "sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15"},
     {file = "async_timeout-4.0.2-py3-none-any.whl", hash = "sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c"},
+]
+asyncio-multisubscriber-queue = [
+    {file = "asyncio_multisubscriber_queue-0.4.1-py3-none-any.whl", hash = "sha256:01820123cf152b694745d5ac7bf6a05068d9bb98d7a7b6487afcda962f5496a0"},
+    {file = "asyncio_multisubscriber_queue-0.4.1.tar.gz", hash = "sha256:e414fb7374ebb13bb1689995c308b8b1cc520a0d60b212dd0e05a6e98b6ae723"},
 ]
 attrs = [
     {file = "attrs-23.1.0-py3-none-any.whl", hash = "sha256:1f28b4522cdc2fb4256ac1a020c78acf9cba2c6b461ccd2c126f3aa8e8335d04"},

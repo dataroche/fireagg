@@ -1,17 +1,16 @@
-import datetime
 import logging
-import pytz
-import asyncio
 from abc import ABC, abstractmethod
 from decimal import Decimal
-from typing import Any, AsyncIterator, NamedTuple
+from typing import AsyncIterator, NamedTuple
 
-from fireagg.database import db, symbol_prices, symbols
+from fireagg.database import db, symbols
 
 
-class LastPrice(NamedTuple):
+class Trade(NamedTuple):
     timestamp_ms: float
     price: Decimal
+    amount: Decimal
+    is_buy: bool
 
 
 class MidPrice(NamedTuple):
@@ -47,16 +46,16 @@ class Connector(ABC):
         await self.update_symbol_mappings(symbols_input)
 
     async def mark_symbol_mapping(
-        self, mapping: symbols.ConnectorSymbolMapping, is_error: bool
+        self, mapping: symbols.ConnectorSymbolMapping, is_unavailable: bool
     ):
-        if is_error:
+        if is_unavailable:
             self.logger.warning(f"Disabling {self.name} {mapping.symbol}")
         async with db.connect_async() as commands:
             await symbols.mark_connector_symbol_mapping(
                 commands,
                 connector=mapping.connector,
                 symbol_id=mapping.symbol_id,
-                is_error=is_error,
+                is_unavailable=is_unavailable,
             )
 
     async def update_symbol_mappings(
@@ -86,13 +85,11 @@ class Connector(ABC):
                 )
 
     @abstractmethod
-    def do_watch_market_last_price(
-        self, connector_symbol: str
-    ) -> AsyncIterator[LastPrice]:
+    def do_watch_trades(self, connector_symbol: str) -> AsyncIterator[Trade]:
         raise NotImplementedError()
 
     @abstractmethod
-    def do_watch_mid_price(self, connector_symbol: str) -> AsyncIterator[MidPrice]:
+    def do_watch_spreads(self, connector_symbol: str) -> AsyncIterator[MidPrice]:
         raise NotImplementedError()
 
 

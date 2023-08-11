@@ -1,10 +1,5 @@
 import asyncio
-from decimal import Decimal
 from typing import Iterable, Optional
-
-from aiostream import stream
-
-from fireagg.database.symbol_prices import SymbolPriceInput
 
 from fireagg.connectors import create_connector, list_connectors, list_symbol_connectors
 
@@ -29,25 +24,15 @@ async def combine_connectors(symbols: Iterable[str]):
 
         for connector_name in connectors:
             connector = create_connector(connector_name)
-            await core.watch_order_book(connector, symbol)
+            await core.watch_spreads(connector, symbol)
+            await core.watch_trades(connector, symbol)
 
     await core.run()
 
 
-async def watch_order_book(connector_name: str, symbol: str):
+async def watch_spreads(connector_name: str, symbol: str):
     core = ProcessingCore()
     connector = create_connector(connector_name)
-    await core.watch_order_book(connector, symbol)
+    await core.watch_spreads(connector, symbol)
 
     await core.run()
-
-
-class PriceCombinator:
-    def __init__(self):
-        self.prices: dict[str, Decimal] = {}
-
-    def update(self, price: SymbolPriceInput):
-        self.prices[price.connector] = price.price
-        prices = list(self.prices.values())
-        avg_price = sum(prices) / len(prices)
-        print(f"Average: {avg_price}")

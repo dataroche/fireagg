@@ -1,35 +1,43 @@
-import datetime
-from typing import Optional
-from decimal import Decimal
-
-import pydantic
 from pydapper.commands import CommandsAsync
+from pydapper.types import ListParamType
 
 
-class SymbolPriceInput(pydantic.BaseModel):
-    connector: str
-    symbol_id: int
-    timestamp: datetime.datetime
-    fetch_timestamp: datetime.datetime
-
-    last_price: Optional[Decimal] = None
-    best_bid: Optional[Decimal] = None
-    mid_price: Optional[Decimal] = None
-    best_ask: Optional[Decimal] = None
-
-
-async def update_prices(
-    commands: CommandsAsync, symbol_price_inputs: list[SymbolPriceInput]
-):
+async def insert_symbol_trades(commands: CommandsAsync, trades: ListParamType):
     await commands.execute_async(
         """
-        INSERT INTO history.symbol_prices_history (
+        INSERT INTO symbol_trades_stream (
             connector,
             symbol_id,
             timestamp,
-            last_price,
+            price,
+            amount,
+            is_buy,
+            update_timestamp,
+            fetch_timestamp
+        )
+        VALUES (
+            ?connector?,
+            ?symbol_id?,
+            ?timestamp?,
+            ?price?,
+            ?amount?,
+            ?is_buy?,
+            NOW(),
+            ?fetch_timestamp?
+        );
+        """,
+        param=trades,
+    )
+
+
+async def insert_symbol_spreads(commands: CommandsAsync, spreads: ListParamType):
+    await commands.execute_async(
+        """
+        INSERT INTO symbol_spreads_stream (
+            connector,
+            symbol_id,
+            timestamp,
             best_bid,
-            mid_price,
             best_ask,
             update_timestamp,
             fetch_timestamp
@@ -38,13 +46,11 @@ async def update_prices(
             ?connector?,
             ?symbol_id?,
             ?timestamp?,
-            ?last_price?,
             ?best_bid?,
-            ?mid_price?,
             ?best_ask?,
             NOW(),
             ?fetch_timestamp?
         );
         """,
-        param=[symbol.model_dump() for symbol in symbol_price_inputs],
+        param=spreads,
     )
