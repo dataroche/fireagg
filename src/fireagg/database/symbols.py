@@ -106,6 +106,20 @@ async def get_symbol_connectors(commands: CommandsAsync, symbol: str):
     return [data["connector"] for data in connectors]
 
 
+async def get_connector_symbols(commands: CommandsAsync, connector: str):
+    connectors = await commands.query_async(
+        """
+        SELECT symbol
+        FROM symbols_map
+        JOIN symbols ON id = symbol_id
+        WHERE connector = ?connector? AND (is_unavailable IS NULL or not is_unavailable)
+        """,
+        param={"connector": connector},
+    )
+
+    return [data["symbol"] for data in connectors]
+
+
 async def mark_connector_symbol_mapping(
     commands: CommandsAsync,
     connector: str,

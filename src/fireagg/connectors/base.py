@@ -27,7 +27,16 @@ class Connector(ABC):
         self.logger = logging.getLogger(f"fireagg.connectors.impl.{self.name}")
         self.running = True
 
-    async def seed_markets(self, on_error="ignore"):
+    async def seed_markets(self, on_error="ignore", skip_if_symbols=True):
+        if skip_if_symbols:
+            async with db.connect_async() as commands:
+                mappings = await symbols.get_connector_symbols(
+                    commands, connector=self.name
+                )
+
+            if mappings:
+                return
+
         try:
             symbols_input = await self.do_seed_markets()
         except Exception as e:
@@ -64,7 +73,6 @@ class Connector(ABC):
         self.logger.info(f"Loading {len(symbol_mappings)} symbols for {self.name}")
         async with db.connect_async() as commands:
             await symbols.upsert_many(commands, symbol_mappings)
-            self.logger
 
     @abstractmethod
     async def do_seed_markets(self) -> list[symbols.ConnectorSymbolInput]:

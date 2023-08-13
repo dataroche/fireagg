@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import os
+import asyncio
 from typing import Optional
 import pydapper
 import pydapper.exceptions
@@ -16,17 +17,21 @@ async def create_pool(maxsize=10):
     return await aiopg.create_pool(DATABASE_URL, maxsize=maxsize)
 
 
+DEFAULT_POOL_LOCK = asyncio.Lock()
 DEFAULT_POOL: Optional[aiopg.Pool] = None
 
 
 @asynccontextmanager
 async def default_pool():
+    global DEFAULT_POOL
     try:
         yield
     finally:
-        if DEFAULT_POOL:
-            DEFAULT_POOL.close()
-            await DEFAULT_POOL.wait_closed()
+        async with DEFAULT_POOL_LOCK:
+            if DEFAULT_POOL:
+                DEFAULT_POOL.close()
+                await DEFAULT_POOL.wait_closed()
+                DEFAULT_POOL = None
 
 
 @asynccontextmanager
@@ -34,8 +39,9 @@ async def connect_async(pool: Optional[aiopg.Pool] = None):
     global DEFAULT_POOL
     assert DATABASE_URL
 
-    if not DEFAULT_POOL:
-        DEFAULT_POOL = await create_pool()
+    async with DEFAULT_POOL_LOCK:
+        if not DEFAULT_POOL:
+            DEFAULT_POOL = await create_pool()
 
     if not pool:
         pool = DEFAULT_POOL

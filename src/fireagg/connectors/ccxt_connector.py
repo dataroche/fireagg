@@ -23,13 +23,19 @@ def list_ccxt_connector_names():
     return [exch for exch in ccxt.exchanges if exch not in exclude]
 
 
-LOWEST_ORDER_BOOK_BY_EXCHANGE = {"binance": 5, "binanceus": 5, "kucoin": 20, "bybit": 1, "kucoinfutures": 20}
+LOWEST_ORDER_BOOK_BY_EXCHANGE = {
+    "binance": 5,
+    "binanceus": 5,
+    "kucoin": 20,
+    "bybit": 1,
+    "kucoinfutures": 20,
+}
 
 
 class CCXTConnector(Connector):
     symbols_rewrite: dict[str, str] = {"BTC/USD:BTC": "BTC/USD"}
 
-    async def do_seed_markets(self):
+    async def do_seed_markets(self, skip_if_symbols=True):
         markets = await self._load_markets()
         return [
             symbols.ConnectorSymbolInput(

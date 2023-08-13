@@ -1,38 +1,51 @@
 import asyncio
+import logging
 from typing import Iterable, Optional
 
+from fireagg.database import db
 from fireagg.connectors import create_connector, list_connectors, list_symbol_connectors
 
 from fireagg.processing.core import ProcessingCore
 
+logger = logging.getLogger(__name__)
+
 
 async def seed_connectors(connectors: Optional[list[str]] = None):
-    if not connectors:
-        connectors = list_connectors()
+    async with db.default_pool():
+        if not connectors:
+            connectors = list_connectors()
 
-    connector_instances = [create_connector(name) for name in connectors]
+        connector_instances = [create_connector(name) for name in connectors]
 
-    return await asyncio.gather(
-        *[connector.seed_markets() for connector in connector_instances]
-    )
+        connector_batch_size = 4
+
+        for i in range(0, len(connector_instances), connector_batch_size):
+            batch = connector_instances[i : i + connector_batch_size]
+
+            logger.info(
+                f"Seeding {', '.join(connector.name for connector in batch)}..."
+            )
+            await asyncio.gather(*[connector.seed_markets() for connector in batch])
 
 
 async def combine_connectors(symbols: Iterable[str]):
-    core = ProcessingCore()
-    for symbol in symbols:
-        connectors = await list_symbol_connectors(symbol)
+    async with db.default_pool():
+        core = ProcessingCore()
+        for symbol in symbols:
+            connectors = await list_symbol_connectors(symbol)
 
-        for connector_name in connectors:
-            connector = create_connector(connector_name)
-            await core.watch_spreads(connector, symbol)
-            await core.watch_trades(connector, symbol)
+            for connector_name in connectors:
+                connector = create_connector(connector_name)
+                await core.watch_spreads(connector, symbol)
+                await core.watch_trades(connector, symbol)
 
-    await core.run()
+        await core.run()
 
 
 async def watch_spreads(connector_name: str, symbol: str):
-    core = ProcessingCore()
-    connector = create_connector(connector_name)
-    await core.watch_spreads(connector, symbol)
+    async with db.default_pool():
+        core = ProcessingCore()
+        connector = create_connector(connector_name)
+        await core.watch_spreads(connector, symbol)
 
-    await core.run()
+        await core.run()
