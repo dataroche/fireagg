@@ -15,7 +15,6 @@ from .messages import SymbolSpreads, SymbolTrade
 
 
 QueueT = TypeVar("QueueT")
-HEALTH_COUNTER_MAX = 3
 
 
 class ConnectorProducer(Worker, Generic[QueueT]):
@@ -27,26 +26,26 @@ class ConnectorProducer(Worker, Generic[QueueT]):
         symbol: str,
         queue: MultisubscriberQueue[QueueT],
     ):
+        super().__init__()
         self.connector = connector
         self.symbol = symbol
         self.symbol_mapping: Optional[symbols.ConnectorSymbolMapping] = None
         self.queue = queue
         self.is_live = False
         self.running = False
-        self.health_counter = HEALTH_COUNTER_MAX
 
     async def init(self):
         self.symbol_mapping = (
             await self.connector.seed_and_get_connector_symbol_mapping(self.symbol)
         )
+        await self.connector.init()
 
-    def mark_alive(self):
+    def is_live_callback(self):
         assert self.symbol_mapping
-        if not self.is_live:
-            self.connector.logger.info(f"{self.symbol_mapping.symbol} is live!")
-            self.is_live = True
+        self.connector.logger.info(f"{self.symbol_mapping.symbol} is live!")
 
-        self.health_counter = HEALTH_COUNTER_MAX
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.connector.name=}, {self.producer_name=}, {self.symbol=})"
 
     async def run(self):
         self.running = True

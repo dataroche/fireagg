@@ -92,6 +92,9 @@ class Connector(ABC):
                     symbol=symbol, _retried=True
                 )
 
+    async def init(self):
+        pass
+
     @abstractmethod
     def do_watch_trades(self, connector_symbol: str) -> AsyncIterator[Trade]:
         raise NotImplementedError()

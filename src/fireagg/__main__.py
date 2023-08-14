@@ -19,8 +19,12 @@ def watch_symbol(symbol: str, connector: str = "kraken"):
 
 
 @cli.command()
-def combine_connectors(symbols: list[str]):
-    asyncio.run(data_streams.combine_connectors(symbols))
+def combine_connectors(symbols: list[str], only_connector: Optional[str] = None):
+    asyncio.run(
+        data_streams.combine_connectors(
+            symbols, only_connectors=only_connector and [only_connector] or None
+        )
+    )
 
 
 if __name__ == "__main__":

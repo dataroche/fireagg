@@ -48,6 +48,9 @@ class CCXTConnector(Connector):
             for data in markets.values()
         ]
 
+    async def init(self):
+        await self._load_markets()
+
     async def _load_markets(self):
         markets = {}
         exchange: Exchange = getattr(ccxt.async_support, self.name)()

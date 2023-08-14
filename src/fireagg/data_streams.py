@@ -28,11 +28,16 @@ async def seed_connectors(connectors: Optional[list[str]] = None):
             await asyncio.gather(*[connector.seed_markets() for connector in batch])
 
 
-async def combine_connectors(symbols: Iterable[str]):
+async def combine_connectors(
+    symbols: Iterable[str], only_connectors: Optional[list[str]] = None
+):
     async with db.default_pool():
         core = ProcessingCore()
         for symbol in symbols:
-            connectors = await list_symbol_connectors(symbol)
+            if only_connectors is None:
+                connectors = await list_symbol_connectors(symbol)
+            else:
+                connectors = only_connectors
 
             for connector_name in connectors:
                 connector = create_connector(connector_name)
