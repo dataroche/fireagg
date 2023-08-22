@@ -4,14 +4,13 @@ import datetime
 from typing import Generic, Optional, TypeVar
 import pytz
 
-from asyncio_multisubscriber_queue import MultisubscriberQueue
-
-from fireagg.database import symbol_prices, symbols
+from fireagg.database import symbols
 
 from fireagg.connectors.base import Connector, MidPrice
 
 from .base import Worker
-from .messages import SymbolSpreads, SymbolTrade
+from .queue_adapter import MessageBus
+from .messages import SymbolSpreads, SymbolTrade, SymbolWeightAdjust
 
 
 QueueT = TypeVar("QueueT")
@@ -24,25 +23,37 @@ class ConnectorProducer(Worker, Generic[QueueT]):
         self,
         connector: Connector,
         symbol: str,
-        queue: MultisubscriberQueue[QueueT],
+        bus: MessageBus,
+        retry_forever: bool = False,
     ):
         super().__init__()
         self.connector = connector
         self.symbol = symbol
         self.symbol_mapping: Optional[symbols.ConnectorSymbolMapping] = None
-        self.queue = queue
+        self.bus = bus
         self.is_live = False
         self.running = False
+        self.retry_forever = retry_forever
 
     async def init(self):
         self.symbol_mapping = (
             await self.connector.seed_and_get_connector_symbol_mapping(self.symbol)
         )
         await self.connector.init()
+        ticker = await self.connector.do_get_market(
+            self.symbol_mapping.connector_symbol
+        )
+
+        await self.bus.weights.put(
+            SymbolWeightAdjust(
+                connector=self.connector.name,
+                symbol_id=self.symbol_mapping.symbol_id,
+                weight=float(ticker.volume_24h),
+            )
+        )
 
     def is_live_callback(self):
-        assert self.symbol_mapping
-        self.connector.logger.info(f"{self.symbol_mapping.symbol} is live!")
+        self.connector.logger.info(f"{self} is live!")
 
     def __str__(self):
         return f"{self.__class__.__name__}({self.connector.name=}, {self.producer_name=}, {self.symbol=})"
@@ -54,6 +65,14 @@ class ConnectorProducer(Worker, Generic[QueueT]):
                 await self.run_symbol_mapping(symbol_mapping)
                 # If we get here, we're meant to stop.
                 self.running = False
+
+                await self.bus.weights.put(
+                    SymbolWeightAdjust(
+                        connector=self.connector.name,
+                        symbol_id=self.symbol_mapping.symbol_id,
+                        weight=0.0,
+                    )
+                )
 
     async def run_symbol_mapping(self, symbol_mapping: symbols.ConnectorSymbolMapping):
         raise NotImplementedError()
@@ -78,17 +97,18 @@ class ConnectorProducer(Worker, Generic[QueueT]):
             if len(err_msg) > 200:
                 err_msg = err_msg[:200] + "..."
 
-            if self.health_counter <= 0:
+            if self.health_counter <= 0 and not self.retry_forever:
                 self.connector.logger.error(
                     f"Shutting down {self.producer_name} for {self.connector.name} {self.symbol}: {err_msg}"
                 )
                 self.running = False
             else:
+                sleep_s = max(1 - self.health_counter, 5)
                 self.connector.logger.warning(
                     f"Error in {self.producer_name} for {self.connector.name} {self.symbol}. "
-                    f"health={self.health_counter}: {err_msg}"
+                    f"health={self.health_counter}, sleep={sleep_s}: {err_msg}"
                 )
-                await asyncio.sleep(1)
+                await asyncio.sleep(sleep_s)
 
 
 class SymbolTradesProducer(ConnectorProducer[SymbolTrade]):
@@ -107,7 +127,7 @@ class SymbolTradesProducer(ConnectorProducer[SymbolTrade]):
             )
             fetch_timestamp = pytz.UTC.localize(datetime.datetime.utcnow())
 
-            await self.queue.put(
+            await self.bus.trades.put(
                 SymbolTrade(
                     connector=self.connector.name,
                     symbol_id=self.symbol_mapping.symbol_id,
@@ -145,7 +165,7 @@ class SymbolSpreadsProducer(ConnectorProducer[SymbolSpreads]):
             )
             fetch_timestamp = pytz.UTC.localize(datetime.datetime.utcnow())
 
-            await self.queue.put(
+            await self.bus.spreads.put(
                 SymbolSpreads(
                     connector=self.connector.name,
                     symbol_id=self.symbol_mapping.symbol_id,

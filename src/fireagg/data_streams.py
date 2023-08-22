@@ -28,6 +28,22 @@ async def seed_connectors(connectors: Optional[list[str]] = None):
             await asyncio.gather(*[connector.seed_markets() for connector in batch])
 
 
+GOLD_CONNECTORS = {
+    "kucoin",
+    "huobi",
+    "okx",
+    "hitbtc",
+    "gateio",
+    "ascendex",
+    "bitfinex",
+    "coinbase",
+    "bitstamp",
+    "kraken",
+    "bybit",
+    "binance",
+}
+
+
 async def combine_connectors(
     symbols: Iterable[str], only_connectors: Optional[list[str]] = None
 ):
@@ -40,6 +56,8 @@ async def combine_connectors(
                 connectors = only_connectors
 
             for connector_name in connectors:
+                if connector_name not in GOLD_CONNECTORS:
+                    continue
                 connector = create_connector(connector_name)
                 await core.watch_spreads(connector, symbol)
                 await core.watch_trades(connector, symbol)

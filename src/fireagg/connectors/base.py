@@ -19,6 +19,11 @@ class MidPrice(NamedTuple):
     best_ask: Decimal
 
 
+class Market(NamedTuple):
+    close: Decimal
+    volume_24h: float
+
+
 class Connector(ABC):
     name: str
 
@@ -101,6 +106,9 @@ class Connector(ABC):
 
     @abstractmethod
     def do_watch_spreads(self, connector_symbol: str) -> AsyncIterator[MidPrice]:
+        raise NotImplementedError()
+
+    async def do_get_market(self, connector_symbol: str) -> Market:
         raise NotImplementedError()
 
 

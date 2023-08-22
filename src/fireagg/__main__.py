@@ -23,7 +23,7 @@ def combine_connectors(symbols: list[str], only_connector: Optional[str] = None)
     asyncio.run(
         data_streams.combine_connectors(
             symbols, only_connectors=only_connector and [only_connector] or None
-        )
+        ),
     )
 
 

@@ -9,7 +9,7 @@ import ccxt.pro
 from ccxt.async_support.base.exchange import Exchange
 from ccxt.base.errors import AuthenticationError, NotSupported, RequestTimeout
 
-from fireagg.connectors.base import Connector, Trade, MidPrice
+from fireagg.connectors.base import Connector, Trade, MidPrice, Market
 from fireagg.database import symbols
 
 
@@ -29,6 +29,7 @@ LOWEST_ORDER_BOOK_BY_EXCHANGE = {
     "kucoin": 20,
     "bybit": 1,
     "kucoinfutures": 20,
+    "huobi": 150,
 }
 
 
@@ -65,6 +66,7 @@ class CCXTConnector(Connector):
             # 5 minutes in the past.
             timestamp_deadline = (time.time() - 300) * 1000
             while self.running:
+                # TODO(will): maybe only process the last trade?
                 trades: list[dict] = await exchange.watch_trades(connector_symbol)
                 for trade in trades:
                     timestamp_ms = trade["timestamp"]
@@ -84,9 +86,12 @@ class CCXTConnector(Connector):
         async with self._exchange() as exchange:
             while self.running:
                 try:
+                    # Change to throttling mode: we don't care about sub-20ms order book updates
+                    # https://docs.ccxt.com/#/ccxt.pro.manual?id=real-time-vs-throttling
                     book = await exchange.watch_order_book(
                         connector_symbol, limit=limit
                     )
+                    # TODO(will): Filter out orders for less than 5, 10$
                     best_bid = Decimal(book["bids"][0][0])
                     best_ask = Decimal(book["asks"][0][0])
 
@@ -102,6 +107,13 @@ class CCXTConnector(Connector):
                         await asyncio.sleep(5)
                     else:
                         raise
+
+    async def do_get_market(self, connector_symbol: str) -> Market:
+        async with self._exchange() as exchange:
+            ticker = await exchange.fetch_ticker(connector_symbol)
+            return Market(
+                close=Decimal(ticker["close"]), volume_24h=float(ticker["baseVolume"])
+            )
 
     @asynccontextmanager
     async def _exchange(self):
