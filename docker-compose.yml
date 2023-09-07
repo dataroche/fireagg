@@ -1,5 +1,20 @@
 version: "3.8"
 
+x-env:
+  &env
+  REDIS_URL: redis://redis
+  POSTGRES_DATABASE_URL: postgresql://fireagg_admin:FIREAGGZ@172.17.0.1/fireagg
+
+x-fireagg:
+  &fireagg
+  environment:
+      <<: *env
+  build:
+      context: '.'
+  volumes:
+      - ./:/app
+
+
 services:
   redis:
     image: redis:7.2.0
@@ -8,6 +23,30 @@ services:
       - "6379:6379"
     volumes: 
       - redisdata:/data
+    
+  db_insertion:
+    <<: *fireagg
+    command: distributed core
+  
+  btc_usd:
+    <<: *fireagg
+    command: distributed symbols BTC/USD BTC/USDT
+    
+  eth_usd:
+    <<: *fireagg
+    command: distributed symbols ETH/USD ETH/USDT
+
+  rpl_usd:
+    <<: *fireagg
+    command: distributed symbols RPL/USD RPL/USDT
+
+  crv_usd:
+    <<: *fireagg
+    command: distributed symbols CRV/USD CRV/USDT
+
+  zrx_usd:
+    <<: *fireagg
+    command: distributed symbols ZRX/USD ZRX/USDT
 
 volumes:
   redisdata:

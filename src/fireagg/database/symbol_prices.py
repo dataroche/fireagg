@@ -18,12 +18,12 @@ async def insert_symbol_trades(commands: CommandsAsync, trades: ListParamType):
         VALUES (
             ?connector?,
             ?symbol_id?,
-            ?timestamp?,
+            TO_TIMESTAMP(?timestamp_ms? / 1000.0),
             ?price?,
             ?amount?,
             ?is_buy?,
             NOW(),
-            ?fetch_timestamp?
+            TO_TIMESTAMP(?fetch_timestamp_ms? / 1000.0)
         );
         """,
         param=trades,
@@ -45,11 +45,11 @@ async def insert_symbol_spreads(commands: CommandsAsync, spreads: ListParamType)
         VALUES (
             ?connector?,
             ?symbol_id?,
-            ?timestamp?,
+            TO_TIMESTAMP(?timestamp_ms? / 1000.0),
             ?best_bid?,
             ?best_ask?,
             NOW(),
-            ?fetch_timestamp?
+            TO_TIMESTAMP(?fetch_timestamp_ms? / 1000.0)
         );
         """,
         param=spreads,
@@ -69,7 +69,7 @@ async def insert_symbol_true_mid_price(
         )
         VALUES (
             ?symbol_id?,
-            ?timestamp?,
+            TO_TIMESTAMP(?timestamp_ms? / 1000.0),
             ?true_mid_price?,
             NOW()
         );

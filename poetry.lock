@@ -754,6 +754,18 @@ python-versions = ">=3.7"
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
+name = "pydantic-settings"
+version = "2.0.3"
+description = "Settings management using Pydantic"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+pydantic = ">=2.0.1"
+python-dotenv = ">=0.21.0"
+
+[[package]]
 name = "pydapper"
 version = "0.8.0"
 description = "A pure python lib inspired by the dotnet lib dapper"
@@ -1075,7 +1087,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "a343747940cc234158c702cd12bbf27fedb5681d17b370b388c51b95347e0f4d"
+content-hash = "b3db6d1839429a1cef7d617896bf27ba508ecebee1f76037e37c715b5409caf8"
 
 [metadata.files]
 aiodns = [
@@ -1994,6 +2006,10 @@ pydantic-core = [
     {file = "pydantic_core-2.4.0-pp39-pypy39_pp73-musllinux_1_1_x86_64.whl", hash = "sha256:b85778308bf945e9b33ac604e6793df9b07933108d20bdf53811bc7c2798a4af"},
     {file = "pydantic_core-2.4.0-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:3ded19dcaefe2f6706d81e0db787b59095f4ad0fbadce1edffdf092294c8a23f"},
     {file = "pydantic_core-2.4.0.tar.gz", hash = "sha256:ec3473c9789cc00c7260d840c3db2c16dbfc816ca70ec87a00cddfa3e1a1cdd5"},
+]
+pydantic-settings = [
+    {file = "pydantic_settings-2.0.3-py3-none-any.whl", hash = "sha256:ddd907b066622bd67603b75e2ff791875540dc485b7307c4fffc015719da8625"},
+    {file = "pydantic_settings-2.0.3.tar.gz", hash = "sha256:962dc3672495aad6ae96a4390fac7e593591e144625e5112d359f8f67fb75945"},
 ]
 pydapper = [
     {file = "pydapper-0.8.0-py3-none-any.whl", hash = "sha256:6bde8e25787faa20260600e3eb00b98ce56b6ffb97ea525287abd5619ed3aaf7"},

@@ -6,8 +6,15 @@ from fireagg.database import db
 from fireagg.connectors import create_connector, list_connectors, list_symbol_connectors
 
 from fireagg.processing.core import ProcessingCore
+from fireagg.processing.redis_adapter import RedisStreamsMessageBus, redis_client
 
 logger = logging.getLogger(__name__)
+
+
+async def db_benchmark():
+    async with db.default_pool():
+        core = ProcessingCore()
+        await core.consume_streams_to_db()
 
 
 async def seed_connectors(connectors: Optional[list[str]] = None):
@@ -41,6 +48,7 @@ GOLD_CONNECTORS = {
     "kraken",
     "bybit",
     "binance",
+    "_benchmark",
 }
 
 
@@ -49,6 +57,7 @@ async def combine_connectors(
 ):
     async with db.default_pool():
         core = ProcessingCore()
+        await core.consume_streams_to_db()
         for symbol in symbols:
             if only_connectors is None:
                 connectors = await list_symbol_connectors(symbol)
@@ -72,3 +81,40 @@ async def watch_spreads(connector_name: str, symbol: str):
         await core.watch_spreads(connector, symbol)
 
         await core.run()
+
+
+async def distributed_core():
+    async with db.default_pool():
+        core = ProcessingCore(bus=get_distributed_bus())
+        await core.consume_streams_to_db()
+        await core.run()
+
+
+async def distributed_watch_symbols(
+    symbols: Iterable[str], only_connectors: Optional[list[str]] = None
+):
+    async with db.default_pool():
+        core = ProcessingCore(bus=get_distributed_bus())
+        for symbol in symbols:
+            if only_connectors is None:
+                connectors = await list_symbol_connectors(symbol)
+            else:
+                connectors = only_connectors
+
+            connectors = [c for c in connectors if c in GOLD_CONNECTORS]
+
+            if not connectors:
+                raise RuntimeError(f"Symbol {symbol} has no connectors.")
+
+            for connector_name in connectors:
+                if connector_name not in GOLD_CONNECTORS:
+                    continue
+                connector = create_connector(connector_name)
+                await core.watch_spreads(connector, symbol)
+                await core.watch_trades(connector, symbol)
+
+        await core.run()
+
+
+def get_distributed_bus():
+    return RedisStreamsMessageBus(redis_client())

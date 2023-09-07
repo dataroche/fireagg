@@ -6,6 +6,8 @@ import dotenv
 from fireagg import data_streams, settings
 
 cli = typer.Typer()
+distributed = typer.Typer()
+cli.add_typer(distributed, name="distributed")
 
 
 @cli.command()
@@ -27,7 +29,27 @@ def combine_connectors(symbols: list[str], only_connector: Optional[str] = None)
     )
 
 
-if __name__ == "__main__":
+@distributed.command()
+def core():
+    asyncio.run(
+        data_streams.distributed_core(),
+    )
+
+
+@distributed.command()
+def symbols(symbols: list[str], only_connector: Optional[str] = None):
+    asyncio.run(
+        data_streams.distributed_watch_symbols(
+            symbols, only_connectors=only_connector and [only_connector] or None
+        ),
+    )
+
+
+def run():
     dotenv.load_dotenv()
     settings.setup_logging()
     cli()
+
+
+if __name__ == "__main__":
+    run()

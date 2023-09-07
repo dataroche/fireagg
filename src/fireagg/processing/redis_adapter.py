@@ -6,6 +6,8 @@ import redis.asyncio
 from redis.typing import FieldT, EncodableT
 from asyncio_multisubscriber_queue import MultisubscriberQueue
 
+from fireagg import settings
+
 from .queue_adapter import MessageBus, QueueAdapter, T
 from .messages import (
     SymbolTrade,
@@ -16,7 +18,8 @@ from .messages import (
 
 
 def redis_client(**kwargs):
-    return redis.asyncio.Redis(**kwargs)
+    url = settings.get().redis_url
+    return redis.asyncio.Redis.from_url(str(url), **kwargs)
 
 
 class RedisStreamsQueue(QueueAdapter[T]):

@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 from decimal import Decimal
+import logging
 from typing import Optional
 
 import numpy as np
@@ -8,7 +9,9 @@ import pandas as pd
 
 from .base import Worker
 from .queue_adapter import MessageBus
-from .messages import SymbolTrueMidPrice
+from .messages import SymbolTrueMidPrice, now_ms
+
+logger = logging.getLogger(__name__)
 
 
 class TrueMidPrice(Worker):
@@ -21,6 +24,7 @@ class TrueMidPrice(Worker):
         self.running = True
         asyncio.create_task(self.run_weights_monitor())
         with self.bus.spreads.queue() as queue:
+            logger.info(f"{self} is live!")
             while self.running:
                 spread = await queue.get()
                 symbol = self.symbols.get(spread.symbol_id)
@@ -33,7 +37,7 @@ class TrueMidPrice(Worker):
                         await self.bus.true_prices.put(
                             SymbolTrueMidPrice(
                                 symbol_id=spread.symbol_id,
-                                timestamp=datetime.datetime.utcnow(),
+                                timestamp_ms=now_ms(),
                                 true_mid_price=true_mid_price,
                                 triggering_spread_message_id=spread.id,
                             )

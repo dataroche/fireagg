@@ -1,5 +1,7 @@
 import asyncio
+from contextlib import contextmanager
 import logging
+import time
 from typing import Generic, TypeVar
 from pydapper.commands import CommandsAsync
 
@@ -25,7 +27,7 @@ class DatabaseStreamQueue(Worker, Generic[QueueT]):
         self.multi_queue = multi_queue
         self.sleep_delay = sleep_delay
         self.throughput_counter = 0
-        self.throughput_log_interval = 30
+        self.throughput_log_interval = 5
 
     async def flush(self, commands: CommandsAsync, records: list[QueueT]):
         raise NotImplementedError()
@@ -38,12 +40,14 @@ class DatabaseStreamQueue(Worker, Generic[QueueT]):
                 # We create our own connection pool to not share the connection with
                 # other less important parts of the code.
                 with self.multi_queue.queue() as queue:
+                    logger.info(f"{self} is live!")
                     while self.running:
                         records = await self.get_as_much_as_possible(queue)
 
                         if records:
-                            async with db.connect_async(priority_pool) as commands:
-                                await self.flush(commands, records)
+                            with warn_if_too_long("flush"):
+                                async with db.connect_async(priority_pool) as commands:
+                                    await self.flush(commands, records)
 
                             self.throughput_counter += len(records)
 
@@ -59,21 +63,30 @@ class DatabaseStreamQueue(Worker, Generic[QueueT]):
         while self.running:
             await asyncio.sleep(self.throughput_log_interval)
 
-            if self.throughput_counter:
-                logger.info(
-                    f"{self.__class__.__name__} processed {self.throughput_counter} records in the last {self.throughput_log_interval}s."
-                )
+            logger.info(
+                f"{self.__class__.__name__} processed {self.throughput_counter or 'no'} records in the last {self.throughput_log_interval}s."
+            )
             self.throughput_counter = 0
 
     async def get_as_much_as_possible(self, queue: asyncio.Queue):
         prices = []
-        while True:
-            try:
-                prices.append(queue.get_nowait())
-            except asyncio.QueueEmpty:
-                break
+        with warn_if_too_long("messages"):
+            while True:
+                try:
+                    prices.append(queue.get_nowait())
+                except asyncio.QueueEmpty:
+                    break
 
         return prices
+
+
+@contextmanager
+def warn_if_too_long(for_what: str, too_long: float = 1):
+    now = time.monotonic()
+    yield
+    delta = time.monotonic() - now
+    if delta > too_long:
+        logger.warning(f"Waited {delta:.2f}s for {for_what}!")
 
 
 class DatabaseStreamTrades(DatabaseStreamQueue[SymbolTrade]):

@@ -7,6 +7,9 @@ class Worker:
         self.running = False
         self.health_counter = HEALTH_COUNTER_MAX
 
+    def __str__(self):
+        return f"{self.__class__.__name__}()"
+
     def mark_alive(self):
         if not self.is_live:
             self.is_live_callback()

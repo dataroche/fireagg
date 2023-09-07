@@ -7,14 +7,17 @@ import pydapper.exceptions
 
 import aiopg
 
+from fireagg import settings
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
-POSTGRES_DATABASE_URL = os.environ.get("POSTGRES_DATABASE_URL")
 
 NoResultException = pydapper.exceptions.NoResultException
 
 
 async def create_pool(maxsize=10):
-    return await aiopg.create_pool(DATABASE_URL, maxsize=maxsize)
+    url = settings.get().postgres_database_url
+    assert url
+    return await aiopg.create_pool(str(url), maxsize=maxsize)
 
 
 DEFAULT_POOL_LOCK = asyncio.Lock()
@@ -37,7 +40,6 @@ async def default_pool():
 @asynccontextmanager
 async def connect_async(pool: Optional[aiopg.Pool] = None):
     global DEFAULT_POOL
-    assert DATABASE_URL
 
     async with DEFAULT_POOL_LOCK:
         if not DEFAULT_POOL:
@@ -53,5 +55,6 @@ async def connect_async(pool: Optional[aiopg.Pool] = None):
 
 def connect():
     # postgresql://
-    assert POSTGRES_DATABASE_URL
-    return pydapper.connect(POSTGRES_DATABASE_URL)
+    url = settings.get().postgres_database_url
+    assert url
+    return pydapper.connect(str(url))

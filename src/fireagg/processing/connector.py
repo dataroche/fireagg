@@ -10,7 +10,7 @@ from fireagg.connectors.base import Connector, MidPrice
 
 from .base import Worker
 from .queue_adapter import MessageBus
-from .messages import SymbolSpreads, SymbolTrade, SymbolWeightAdjust
+from .messages import SymbolSpreads, SymbolTrade, SymbolWeightAdjust, now_ms
 
 
 QueueT = TypeVar("QueueT")
@@ -122,17 +122,13 @@ class SymbolTradesProducer(ConnectorProducer[SymbolTrade]):
                 continue
 
             self.mark_alive()
-            timestamp = datetime.datetime.fromtimestamp(
-                trade.timestamp_ms / 1000.0, tz=pytz.UTC
-            )
-            fetch_timestamp = pytz.UTC.localize(datetime.datetime.utcnow())
 
             await self.bus.trades.put(
                 SymbolTrade(
                     connector=self.connector.name,
                     symbol_id=self.symbol_mapping.symbol_id,
-                    timestamp=timestamp,
-                    fetch_timestamp=fetch_timestamp,
+                    timestamp_ms=trade.timestamp_ms,
+                    fetch_timestamp_ms=now_ms(),
                     price=trade.price,
                     amount=trade.amount,
                     is_buy=trade.is_buy,
@@ -160,17 +156,12 @@ class SymbolSpreadsProducer(ConnectorProducer[SymbolSpreads]):
                 continue
             self.mark_alive()
 
-            timestamp = datetime.datetime.fromtimestamp(
-                mid_price.timestamp_ms / 1000.0, tz=pytz.UTC
-            )
-            fetch_timestamp = pytz.UTC.localize(datetime.datetime.utcnow())
-
             await self.bus.spreads.put(
                 SymbolSpreads(
                     connector=self.connector.name,
                     symbol_id=self.symbol_mapping.symbol_id,
-                    timestamp=timestamp,
-                    fetch_timestamp=fetch_timestamp,
+                    timestamp_ms=mid_price.timestamp_ms,
+                    fetch_timestamp_ms=now_ms(),
                     best_bid=mid_price.best_bid,
                     best_ask=mid_price.best_ask,
                 )
