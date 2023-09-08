@@ -15,7 +15,7 @@ NoResultException = pydapper.exceptions.NoResultException
 
 
 async def create_pool(maxsize=10):
-    url = settings.get().postgres_database_url
+    url = settings.get().database_url
     assert url
     return await aiopg.create_pool(str(url), maxsize=maxsize)
 
@@ -55,6 +55,6 @@ async def connect_async(pool: Optional[aiopg.Pool] = None):
 
 def connect():
     # postgresql://
-    url = settings.get().postgres_database_url
+    url = settings.get().database_url
     assert url
     return pydapper.connect(str(url))

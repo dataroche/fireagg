@@ -21,6 +21,7 @@ python-dotenv = "^1.0.0"
 asyncio-multisubscriber-queue = "0.4.1"
 redis = "^5.0.0"
 pydantic-settings = "^2.0.3"
+prometheus-client = "^0.17.1"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -3,7 +3,7 @@ from typing import Optional
 import typer
 import dotenv
 
-from fireagg import data_streams, settings
+from fireagg import data_streams, settings, metrics
 
 cli = typer.Typer()
 distributed = typer.Typer()
@@ -47,7 +47,12 @@ def symbols(symbols: list[str], only_connector: Optional[str] = None):
 
 def run():
     dotenv.load_dotenv()
+    settings_obj = settings.get()
     settings.setup_logging()
+
+    if settings_obj.enable_metrics_exporter:
+        metrics.run_metrics_server(settings_obj.metrics_exporter_port)
+
     cli()
 
 

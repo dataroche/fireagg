@@ -2,8 +2,11 @@ version: "3.8"
 
 x-env:
   &env
+  ENABLE_METRICS_EXPORTER: 1
+  METRICS_EXPORTER_PORT: ${METRICS_EXPORTER_PORT}
   REDIS_URL: redis://redis
-  POSTGRES_DATABASE_URL: postgresql://fireagg_admin:FIREAGGZ@172.17.0.1/fireagg
+  DATABASE_URL: postgresql://fireagg_admin:FIREAGGZ@172.17.0.1/fireagg
+  BENCHMARK_TRADES_PER_SECOND_TARGET: 100
 
 x-fireagg:
   &fireagg
@@ -13,6 +16,14 @@ x-fireagg:
       context: '.'
   volumes:
       - ./:/app
+  depends_on:
+      - redis 
+  expose:
+    # Prometheus metrics
+    - ${METRICS_EXPORTER_PORT}
+  networks:
+      - metrics
+      - main
 
 
 services:
@@ -23,30 +34,40 @@ services:
       - "6379:6379"
     volumes: 
       - redisdata:/data
+    networks:
+      - main
     
   db_insertion:
     <<: *fireagg
+    hostname: fireagg_db_insertion
     command: distributed core
+
+  db_benchmark:
+    <<: *fireagg
+    command: distributed symbols seesaw/synthetic
   
-  btc_usd:
-    <<: *fireagg
-    command: distributed symbols BTC/USD BTC/USDT
+
+  
+  # btc_usd:
+  #   <<: *fireagg
+  #   command: distributed symbols BTC/USD BTC/USDT
     
-  eth_usd:
-    <<: *fireagg
-    command: distributed symbols ETH/USD ETH/USDT
+  # eth_usd:
+  #   <<: *fireagg
+  #   command: distributed symbols ETH/USD ETH/USDT
 
-  rpl_usd:
-    <<: *fireagg
-    command: distributed symbols RPL/USD RPL/USDT
+  # crv_usd:
+  #   <<: *fireagg
+  #   command: distributed symbols CRV/USD CRV/USDT
 
-  crv_usd:
-    <<: *fireagg
-    command: distributed symbols CRV/USD CRV/USDT
-
-  zrx_usd:
-    <<: *fireagg
-    command: distributed symbols ZRX/USD ZRX/USDT
+  # zrx_usd:
+  #   <<: *fireagg
+  #   command: distributed symbols ZRX/USD ZRX/USDT
 
 volumes:
   redisdata:
+
+networks:
+  main:
+  metrics:
+    external: true

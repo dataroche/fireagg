@@ -16,4 +16,6 @@ COPY . .
 
 RUN poetry install
 
+EXPOSE 9000
+
 ENTRYPOINT ["fireagg"]
