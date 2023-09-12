@@ -1,7 +1,10 @@
-# FireAgg
+# 🔥 FireAgg
 
 An open-source low-latency crypto aggregator. Combine crypto prices from any CCXT
 supported exchanges in real-time.
+
+You can get a sense of performance in [this blog
+post](https://www.dataroc.ca/blog/how-crypto-exchanges-perform-under-load).
 
 ## Prerequisites
 
