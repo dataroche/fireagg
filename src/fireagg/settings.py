@@ -28,6 +28,10 @@ class FireAggSettings(BaseSettings):
     enable_metrics_exporter: bool = False
     metrics_exporter_port: int = 9000
 
+    # Not used by the Python code, but added to avoid errors
+    postgres_user: Optional[str] = None
+    postgres_password: Optional[str] = None
+
 
 def get():
     return FireAggSettings()

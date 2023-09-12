@@ -34,16 +34,7 @@
             "module": "fireagg",
             "args": [
                 "combine-connectors",
-                "BTC/USDT",
-                "AAVE/USDT",
                 "COMP/USDT",
-                "CRV/USDT",
-                "RPL/USDT",
-                "BTC/USD",
-                "AAVE/USD",
-                "COMP/USD",
-                "CRV/USD",
-                "RPL/USD",
             ],
             "justMyCode": false
         },
@@ -57,6 +48,18 @@
                 "RPL/USDT",
                 "--connector",
                 "binance"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "FireAgg Benchmark",
+            "type": "python",
+            "request": "launch",
+            "module": "fireagg",
+            "args": [
+                "distributed",
+                "symbols",
+                "seesaw/synthetic"
             ],
             "justMyCode": false
         }

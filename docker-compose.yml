@@ -1,57 +1,69 @@
 version: "3.8"
 
-x-env:
-  &env
+x-env: &env
   ENABLE_METRICS_EXPORTER: 1
   METRICS_EXPORTER_PORT: ${METRICS_EXPORTER_PORT}
   REDIS_URL: redis://redis
-  DATABASE_URL: postgresql://fireagg_admin:FIREAGGZ@172.17.0.1/fireagg
+  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/fireagg
   BENCHMARK_TRADES_PER_SECOND_TARGET: 100
 
-x-fireagg:
-  &fireagg
+x-fireagg: &fireagg
+  restart: unless-stopped
   environment:
-      <<: *env
+    <<: *env
   build:
-      context: '.'
+    context: "."
   volumes:
-      - ./:/app
+    - ./:/app
   depends_on:
-      - redis 
+    - redis
+    - postgres
   expose:
     # Prometheus metrics
     - ${METRICS_EXPORTER_PORT}
   networks:
-      - metrics
-      - main
-
+    - metrics
+    - main
 
 services:
+  postgres:
+    restart: unless-stopped
+    image: timescale/timescaledb-ha:pg14-latest
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_DB: fireagg
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./migrations/committed:/docker-entrypoint-initdb.d
+      - pgdata:/home/postgres/pgdata
+    networks:
+      - main
+
   redis:
     image: redis:7.2.0
     restart: unless-stopped
     ports:
       - "6379:6379"
-    volumes: 
+    volumes:
       - redisdata:/data
     networks:
       - main
-    
+
   db_insertion:
     <<: *fireagg
     hostname: fireagg_db_insertion
     command: distributed core
 
-  db_benchmark:
-    <<: *fireagg
-    command: distributed symbols seesaw/synthetic
-  
-
-  
-  # btc_usd:
+  # db_benchmark:
   #   <<: *fireagg
-  #   command: distributed symbols BTC/USD BTC/USDT
-    
+  #   command: distributed symbols seesaw/synthetic
+
+  btc_usd:
+    <<: *fireagg
+    command: distributed symbols BTC/USD BTC/USDT
+
   # eth_usd:
   #   <<: *fireagg
   #   command: distributed symbols ETH/USD ETH/USDT
@@ -66,6 +78,7 @@ services:
 
 volumes:
   redisdata:
+  pgdata:
 
 networks:
   main:

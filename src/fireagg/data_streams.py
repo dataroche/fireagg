@@ -2,38 +2,13 @@ import asyncio
 import logging
 from typing import Iterable, Optional
 
-from fireagg.database import db
-from fireagg.connectors import create_connector, list_connectors, list_symbol_connectors
+from fireagg.database import db, symbols
+from fireagg.connectors import create_connector, list_symbol_connectors
 
 from fireagg.processing.core import ProcessingCore
 from fireagg.processing.redis_adapter import RedisStreamsMessageBus, redis_client
 
 logger = logging.getLogger(__name__)
-
-
-async def db_benchmark():
-    async with db.default_pool():
-        core = ProcessingCore()
-        await core.consume_streams_to_db()
-
-
-async def seed_connectors(connectors: Optional[list[str]] = None):
-    async with db.default_pool():
-        if not connectors:
-            connectors = list_connectors()
-
-        connector_instances = [create_connector(name) for name in connectors]
-
-        connector_batch_size = 4
-
-        for i in range(0, len(connector_instances), connector_batch_size):
-            batch = connector_instances[i : i + connector_batch_size]
-
-            logger.info(
-                f"Seeding {', '.join(connector.name for connector in batch)}..."
-            )
-            await asyncio.gather(*[connector.seed_markets() for connector in batch])
-
 
 GOLD_CONNECTORS = {
     "kucoin",
@@ -50,6 +25,32 @@ GOLD_CONNECTORS = {
     "binance",
     "_benchmark",
 }
+
+
+async def db_benchmark():
+    async with db.default_pool():
+        core = ProcessingCore()
+        await core.consume_streams_to_db()
+
+
+async def seed_connectors(connectors: Optional[list[str]] = None):
+    async with db.default_pool():
+        return await _do_seed_connectors(connectors)
+
+
+async def _do_seed_connectors(connectors: Optional[list[str]] = None):
+    if not connectors:
+        connectors = list(GOLD_CONNECTORS)
+
+    connector_instances = [create_connector(name) for name in connectors]
+
+    connector_batch_size = 4
+
+    for i in range(0, len(connector_instances), connector_batch_size):
+        batch = connector_instances[i : i + connector_batch_size]
+
+        logger.info(f"Seeding {', '.join(connector.name for connector in batch)}...")
+        await asyncio.gather(*[connector.seed_markets() for connector in batch])
 
 
 async def combine_connectors(
@@ -85,9 +86,19 @@ async def watch_spreads(connector_name: str, symbol: str):
 
 async def distributed_core():
     async with db.default_pool():
+        await _distributed_bootstrap()
+
         core = ProcessingCore(bus=get_distributed_bus())
         await core.consume_streams_to_db()
         await core.run()
+
+
+async def _distributed_bootstrap():
+    async with db.connect_async() as commands:
+        db_symbols = await symbols.get_all(commands)
+
+    if not db_symbols:
+        await _do_seed_connectors()
 
 
 async def distributed_watch_symbols(
