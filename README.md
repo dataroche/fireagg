@@ -15,8 +15,11 @@ post](https://www.dataroc.ca/blog/how-crypto-exchanges-perform-under-load).
 - Create a `.env` file by copying the content of `.env.example`. Change the password!
 - Create the metrics network: `docker network create metrics`.
 - Launch the stack: `docker compose up -d`.
-- The first launch is much slower, as the core worker needs to index symbols from the top 13
-  exchanges.
+- The first launch is much slower, as the core worker needs to index symbols from the
+  top 13 exchanges.
+- You can monitor the connector symbols index with `docker compose logs -f`
+- Once the symbols are loaded, you should restart the stack: `docker compose down`, then
+  `docker compose up -d`
 - Note that to avoid conflicts with other postgres database that might be running on
   your system, the database is exposed on port 15432 instead of the default 5432 port.
 
@@ -35,9 +38,9 @@ matter of distributing the load - there are no mechanism (yet) for worker orches
   it. The worker containers might restart.
 - The performance tests ran on local hardware seems to point towards a limit of about
   200 messages per second that can be processed. Running BTC and ETH major pairs will
-  easily reach that during high market activity. See
-  [https://www.dataroc.ca/blog/how-crypto-exchanges-perform-under-load](this blog post
-  for more information). We're working towards better performance.
+  easily reach that during high market activity. See [this blog post for more
+  information](https://www.dataroc.ca/blog/how-crypto-exchanges-perform-under-load).
+  We're working towards better performance.
 
 ## Roadmap
 
