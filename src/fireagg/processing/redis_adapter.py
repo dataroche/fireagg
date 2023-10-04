@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import contextmanager
-from typing import Iterator, Type, cast
+from typing import Any, Callable, Iterator, Type, Union, cast
+import pydantic
 
 import redis.asyncio
 from redis.typing import FieldT, EncodableT
@@ -8,7 +9,10 @@ from asyncio_multisubscriber_queue import MultisubscriberQueue
 
 from fireagg import settings
 
-from .queue_adapter import MessageBus, QueueAdapter, T
+from .message_bus import MessageBus
+from .queue_adapter import QueueAdapter, T
+from .kv_adapter import LastValueKVStore
+
 from .messages import (
     SymbolTrade,
     SymbolSpreads,
@@ -36,8 +40,9 @@ class RedisStreamsQueue(QueueAdapter[T]):
         self.running = True
 
     async def put(self, obj: T):
-        data = cast(dict[FieldT, EncodableT], {self.DATA_KEY: obj.model_dump_json()})
-        await self.redis.xadd(self.stream_key, data)
+        await self.redis.xadd(
+            self.stream_key, {self.DATA_KEY: redis_encode_pydantic(obj)}
+        )
 
     @contextmanager
     def queue(self) -> Iterator[asyncio.Queue[T]]:
@@ -52,9 +57,16 @@ class RedisStreamsQueue(QueueAdapter[T]):
                 for obj in data:
                     msg_id, data = obj
                     raw_data = data[self.DATA_KEY]
-                    await self._output_queue.put(
-                        self.queue_type.model_validate_json(raw_data)
-                    )
+                    model = redis_decode_pydantic(self.queue_type, raw_data)
+                    await self._output_queue.put(model)
+
+
+def redis_encode_pydantic(obj: pydantic.BaseModel):
+    return cast(EncodableT, obj.model_dump_json())
+
+
+def redis_decode_pydantic(cls: Type[T], encoded: Any):
+    return cls.model_validate_json(encoded)
 
 
 class RedisStreamsMessageBus(MessageBus):
@@ -69,6 +81,14 @@ class RedisStreamsMessageBus(MessageBus):
             client, SymbolTrueMidPrice, "symbol_true_prices"
         )
 
+        # self.last_true_prices = RedisKVStore(
+        #     client,
+        #     name="true_mid_prices",
+        #     queue_type=SymbolTrueMidPrice,
+        #     queue=self.true_prices,
+        #     key_fn=lambda tp: str(tp.symbol_id),
+        # )
+
         self._queues: list[RedisStreamsQueue] = [
             self.trades,
             self.spreads,
@@ -81,6 +101,8 @@ class RedisStreamsMessageBus(MessageBus):
         await self.redis.ping()
 
         self._tasks = [asyncio.create_task(q.run_reader()) for q in self._queues]
+        if self.last_true_prices:
+            self._tasks.append(asyncio.create_task(self.last_true_prices.run()))
 
     async def __aenter__(self):
         await self.init()
@@ -90,3 +112,28 @@ class RedisStreamsMessageBus(MessageBus):
         for t in self._tasks:
             t.cancel()
         await self.redis.close()
+
+
+class RedisKVStore(LastValueKVStore[T]):
+    def __init__(
+        self,
+        client: redis.asyncio.Redis,
+        name: str,
+        queue_type: Type[T],
+        queue: QueueAdapter[T],
+        key_fn: Callable[[T], str],
+    ):
+        super().__init__(name=name, queue_type=queue_type, queue=queue, key_fn=key_fn)
+        self.redis = client
+
+    def _key_name(self, key: str):
+        return f"{self.name}__{key}"
+
+    async def get(self, key: str) -> T:
+        redis_key = self._key_name(key)
+        value = await self.redis.get(redis_key)
+        return value and redis_decode_pydantic(self.queue_type, value)
+
+    async def set(self, key: str, value: T):
+        redis_key = self._key_name(key)
+        await self.redis.set(redis_key, redis_encode_pydantic(value))

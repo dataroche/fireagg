@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from .base import Worker
-from .queue_adapter import MessageBus
+from .message_bus import MessageBus
 from .messages import SymbolTrueMidPrice, now_ms
 
 logger = logging.getLogger(__name__)

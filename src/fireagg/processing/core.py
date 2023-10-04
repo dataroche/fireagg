@@ -12,7 +12,7 @@ from .db_insertion import (
     DatabaseStreamSpreads,
     DatabaseStreamTrueMidPrice,
 )
-from .queue_adapter import MessageBus, AsyncioMessageBus
+from .message_bus import MessageBus, AsyncioMessageBus
 from .redis_adapter import RedisStreamsMessageBus, redis_client
 from .true_mid_price import TrueMidPrice
 

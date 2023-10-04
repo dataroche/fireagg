@@ -1,5 +1,6 @@
 from pydapper.commands import CommandsAsync
 from pydapper.types import ListParamType
+from pydapper.exceptions import NoResultException
 
 
 async def insert_symbol_trades(commands: CommandsAsync, trades: ListParamType):
@@ -76,3 +77,23 @@ async def insert_symbol_true_mid_price(
         """,
         param=mid_prices,
     )
+
+
+async def get_last_symbol_true_mid_price(
+    commands: CommandsAsync,
+    symbol_id: int,
+):
+    try:
+        data = await commands.query_first_async(
+            """
+            SELECT *
+            FROM symbol_true_mid_price_stream
+            WHERE symbol_id = ?symbol_id?
+            ORDER BY timestamp DESC
+            LIMIT 1
+            """,
+            param={"symbol_id": symbol_id},
+        )
+        return data
+    except NoResultException:
+        return None

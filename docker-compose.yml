@@ -41,6 +41,13 @@ services:
     networks:
       - main
 
+  fireagg-app:
+    <<: *fireagg
+    entrypoint: uvicorn
+    ports:
+      - "5011:5011"
+    command: fireagg.app:app --reload --host 0.0.0.0 --port 5011
+
   redis:
     image: redis:7.2.0
     restart: unless-stopped

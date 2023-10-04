@@ -62,6 +62,19 @@
                 "seesaw/synthetic"
             ],
             "justMyCode": false
+        },
+        {
+            "name": "FireAgg Server",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "fireagg.app:app",
+                "--reload",
+                "--host",
+                "0.0.0.0"
+            ],
+            "justMyCode": false
         }
     ]
 }

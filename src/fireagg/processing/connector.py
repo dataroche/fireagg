@@ -9,7 +9,7 @@ from fireagg.database import symbols
 from fireagg.connectors.base import Connector, MidPrice
 
 from .base import Worker
-from .queue_adapter import MessageBus
+from .message_bus import MessageBus
 from .messages import SymbolSpreads, SymbolTrade, SymbolWeightAdjust, now_ms
 
 
@@ -35,11 +35,17 @@ class ConnectorProducer(Worker, Generic[QueueT]):
         self.running = False
         self.retry_forever = retry_forever
 
+        self.weight_task: Optional[asyncio.Task] = None
+
     async def init(self):
         self.symbol_mapping = (
             await self.connector.seed_and_get_connector_symbol_mapping(self.symbol)
         )
         await self.connector.init()
+        await self._adjust_weight()
+
+    async def _adjust_weight(self):
+        assert self.symbol_mapping
         ticker = await self.connector.do_get_market(
             self.symbol_mapping.connector_symbol
         )
@@ -62,9 +68,12 @@ class ConnectorProducer(Worker, Generic[QueueT]):
         self.running = True
         while self.running:
             async with self.error_handling() as symbol_mapping:
+                weight_task = asyncio.create_task(self.run_adjust_weight())
                 await self.run_symbol_mapping(symbol_mapping)
                 # If we get here, we're meant to stop.
                 self.running = False
+
+                weight_task.cancel()
 
                 await self.bus.weights.put(
                     SymbolWeightAdjust(
@@ -73,6 +82,11 @@ class ConnectorProducer(Worker, Generic[QueueT]):
                         weight=0.0,
                     )
                 )
+
+    async def run_adjust_weight(self):
+        while self.running:
+            await asyncio.sleep(500)
+            await self._adjust_weight()
 
     async def run_symbol_mapping(self, symbol_mapping: symbols.ConnectorSymbolMapping):
         raise NotImplementedError()

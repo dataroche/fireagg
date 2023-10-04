@@ -1,6 +1,7 @@
 from typing import Optional
 import pydantic
 from pydapper.commands import CommandsAsync
+from pydapper.exceptions import NoResultException
 
 
 class SymbolInput(pydantic.BaseModel):
@@ -52,6 +53,22 @@ async def get_connector_symbol_mapping(
         model=ConnectorSymbolMapping,
         param={"connector": connector, "symbol": symbol},
     )
+
+
+async def get_symbol(commands: CommandsAsync, symbol: str):
+    try:
+        return await commands.query_single_async(
+            """
+            SELECT
+                *
+            FROM symbols
+            WHERE symbol = ?symbol?
+            """,
+            model=Symbol,
+            param={"symbol": symbol},
+        )
+    except NoResultException:
+        return None
 
 
 async def upsert_many(commands: CommandsAsync, symbols: list[ConnectorSymbolInput]):
