@@ -9,7 +9,7 @@ import ccxt.pro
 from ccxt.async_support.base.exchange import Exchange
 from ccxt.base.errors import AuthenticationError, NotSupported, RequestTimeout
 
-from fireagg.connectors.base import Connector, Trade, MidPrice, Market
+from fireagg.input_streams.base import Connector, Trade, MidPrice, Market
 from fireagg.database import symbols
 
 

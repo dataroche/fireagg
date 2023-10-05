@@ -3,7 +3,7 @@ import logging
 from typing import Optional
 from asyncio_multisubscriber_queue import MultisubscriberQueue
 
-from fireagg.connectors.base import Connector
+from fireagg.input_streams.base import Connector
 
 from .base import Worker
 from .connector import SymbolTradesProducer, SymbolSpreadsProducer

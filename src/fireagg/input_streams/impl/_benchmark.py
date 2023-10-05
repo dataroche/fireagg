@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import AsyncIterator, Optional, TypedDict
 
-from fireagg.connectors.base import Connector, Market, MidPrice, Trade
+from fireagg.input_streams.base import Connector, Market, MidPrice, Trade
 from fireagg.database import symbols
 
 from fireagg import settings

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from decimal import Decimal
 from typing import AsyncIterator, NamedTuple
 
+from fireagg.input_streams import __name__ as input_streams_name
 from fireagg.database import db, symbols
 
 
@@ -29,7 +30,7 @@ class Connector(ABC):
 
     def __init__(self, name: str):
         self.name = name
-        self.logger = logging.getLogger(f"fireagg.connectors.impl.{self.name}")
+        self.logger = logging.getLogger(f"{input_streams_name}.impl.{self.name}")
         self.running = True
 
     async def seed_markets(self, on_error="ignore", skip_if_symbols=True):

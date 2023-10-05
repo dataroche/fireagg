@@ -3,7 +3,7 @@ import logging
 from typing import Iterable, Optional
 
 from fireagg.database import db, symbols
-from fireagg.connectors import create_connector, list_symbol_connectors
+from fireagg.input_streams import create_connector, list_symbol_connectors
 
 from fireagg.processing.core import ProcessingCore
 from fireagg.processing.redis_adapter import RedisStreamsMessageBus, redis_client

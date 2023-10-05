@@ -1,7 +1,11 @@
 import importlib
 
-from fireagg.connectors.base import Connector
-from fireagg.connectors.ccxt_connector import CCXTConnector, list_ccxt_connector_names
+from fireagg.input_streams import __name__ as input_streams_name
+from fireagg.input_streams.base import Connector
+from fireagg.input_streams.ccxt_connector import (
+    CCXTConnector,
+    list_ccxt_connector_names,
+)
 
 
 def list_connectors():
@@ -10,7 +14,7 @@ def list_connectors():
 
 def create_connector(name: str) -> Connector:
     try:
-        possible_module_name = f"fireagg.connectors.impl.{name}"
+        possible_module_name = f"{input_streams_name}.impl.{name}"
         connector_module = importlib.import_module(possible_module_name)
     except ImportError:
         # Fallback to CCXT connector.

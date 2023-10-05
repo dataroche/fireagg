@@ -6,7 +6,7 @@ import pytz
 
 from fireagg.database import symbols
 
-from fireagg.connectors.base import Connector, MidPrice
+from fireagg.input_streams.base import Connector, MidPrice
 
 from .base import Worker
 from .message_bus import MessageBus
